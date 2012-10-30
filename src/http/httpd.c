@@ -73,11 +73,11 @@ static int graph_access_control = 0;
 static int soft_limit = 0; /* default value for soft limit */
 static int opt_level = -1;  /* default value for optimisation level */
 static int cors_support = -1; /* cross-origin resource sharing (CORS) support */
+static int threadpool_size = 16;
 
 static fs_query_state *query_state;
 
 static GThreadPool* pool;
-#define QUERY_THREAD_POOL_SIZE 16
 
 static gboolean recv_fn (GIOChannel *source, GIOCondition condition, gpointer data);
 static void http_import_queue_remove(client_ctxt *ctxt);
@@ -1885,7 +1885,7 @@ static void child (int srv, char *kb_name, char *password)
     fsp_init_acl_system(fsplink);
   bu = raptor_new_uri(query_state->raptor_world, (unsigned char *)"local:local");
   g_thread_init(NULL);
-  pool = g_thread_pool_new(http_query_worker, NULL, QUERY_THREAD_POOL_SIZE, FALSE, NULL);
+  pool = g_thread_pool_new(http_query_worker, NULL, threadpool_size, FALSE, NULL);
 
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
   GIOChannel *listener = g_io_channel_unix_new (srv);
@@ -1947,7 +1947,7 @@ int main(int argc, char *argv[])
 
 
   int o;
-  while (!help && (o = getopt(argc, argv, "DCAH:p:Uds:O:Xc:")) != -1) {
+  while (!help && (o = getopt(argc, argv, "DCAH:p:Uds:O:Xc:t:")) != -1) {
     switch (o) {
       case 'D':
         daemonize = 0;
@@ -1986,6 +1986,9 @@ int main(int argc, char *argv[])
       case 'A':
         graph_access_control = 1;
         break;
+      case 't':
+        threadpool_size = atoi(optarg);
+        break;
       default:
         help = 1;
         break;
@@ -1993,7 +1996,7 @@ int main(int argc, char *argv[])
   }
 
   if (help || optind >= argc || optind < argc - 1) {
-    fprintf(stdout, "Usage: %s [-D] [-H host] [-p port] [-U] [-s limit] [-c path] <kbname>\n", basename(argv[0]));
+    fprintf(stdout, "Usage: %s [-D] [-H host] [-p port] [-U] [-s limit] [-c path] [-t num] <kbname>\n", basename(argv[0]));
     fprintf(stdout, "       -H   specify host to listen on\n");
     fprintf(stdout, "       -p   specify port to listen on\n");
     fprintf(stdout, "       -D   do not daemonise\n");
@@ -2003,6 +2006,7 @@ int main(int argc, char *argv[])
     fprintf(stdout, "       -O   set query optimiser level (0-3, default is 3)\n");
     fprintf(stdout, "       -X   enable public cross-origin resource sharing (CORS) support\n");
     fprintf(stdout, "       -c   path to config file\n");
+    fprintf(stdout, "       -t   query thread pool size (default 16)\n");
     fprintf(stdout, "       -C   enable cache stats in /status/cache\n");
     fprintf(stdout, "       -A   enable access control at graph level\n");
     fprintf(stdout, "Options can also be set permenantly in /etc/4store.conf\n");
