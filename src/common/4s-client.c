@@ -140,6 +140,10 @@ static int fsp_open_socket (fsp_link *link, const char *node, uint16_t port)
       continue;
     }
 
+    char host[NI_MAXHOST], service[NI_MAXSERV];
+      if (!getnameinfo(list->ai_addr, list->ai_addrlen, host, NI_MAXHOST, service, NI_MAXSERV, NI_NUMERICSERV | NI_NUMERICHOST))
+        link_error(LOG_INFO, "fsp_open_socket connect to family %d, %s port %s", list->ai_family, host, service);
+
     if (connect(sock, list->ai_addr, list->ai_addrlen) < 0) {
       link_error(LOG_ERR, "connect to node “%s” failed", node);
       close(sock);
@@ -360,7 +364,7 @@ int fsp_add_backend (fsp_link *link, const char *addr, uint16_t port, int segmen
         } else if (sock == -1) {
           sock = fsp_open_socket(link, link->addrs[server], link->ports[server]);
         }
-        
+
         if (choose_segment(link, sock, server, seg)) break; /* something went wrong */
         link->groups[seg]= server;
         link->socks[seg] = link->socks1[seg] = sock;
@@ -402,7 +406,7 @@ static void fsp_write_primary(fsp_link* link, const void *data, size_t size)
 
 #ifdef FS_PROFILE_WRITE
   struct timeval start, stop;
-  
+
   gettimeofday(&start, NULL);
 #endif
   g_static_mutex_lock(&link->mutex[segment]);
@@ -427,7 +431,7 @@ static int fsp_write(fsp_link* link, const void *data, size_t size)
 
 #ifdef FS_PROFILE_WRITE
   struct timeval start, stop;
-  
+
   gettimeofday(&start, NULL);
 #endif
   g_static_mutex_lock(&link->mutex[segment]);
@@ -780,7 +784,7 @@ int fsp_bind_limit (fsp_link *link,
   content += prids->length * 8;
   memcpy(content, orids->data, orids->length * 8);
   content += orids->length * 8;
-  
+
   int sock = fsp_write(link, out, length);
   free(out);
 
@@ -1111,7 +1115,7 @@ int fsp_res_import (fsp_link *link, fs_segment segment,
 
   memcpy(record, &count, sizeof(int));
   record += 8;
-  
+
   for (k= 0; k < count; ++k) {
     unsigned int one_length = ((28 + strlen(buffer[k].lex)) / 8) * 8;
 
@@ -1386,7 +1390,7 @@ int fsp_get_data_size (fsp_link *link, fs_segment segment,
     free(in);
     return 3;
   }
-  
+
   memcpy (&old_size, in + FS_HEADER, sizeof(fs_old_data_size));
   free(in);
 
@@ -1450,9 +1454,9 @@ int fsp_get_import_times (fsp_link *link, fs_segment segment,
     free(in);
     return 3;
   }
-  
+
   memcpy (timing, in + FS_HEADER, sizeof(fs_import_timing));
-  
+
   free(in);
   return 0;
 }
@@ -1479,9 +1483,9 @@ int fsp_get_query_times (fsp_link *link, fs_segment segment,
     free(in);
     return 3;
   }
-  
+
   memcpy (timing, in + FS_HEADER, sizeof(fs_query_timing));
-  
+
   free(in);
   return 0;
 }
