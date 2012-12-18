@@ -519,6 +519,10 @@ void fsp_serve (const char *kb_name, fsp_backend *backend, int daemon, float dis
 	   'dual stack' or ipv4 address. on some BSDs we will see two or more; often separate
 	   INET6 and INET addrinfos. we want to listen on all of them. */
 	do {
+	    char host[NI_MAXHOST], service[NI_MAXSERV];
+	    if (!getnameinfo(info->ai_addr, info->ai_addrlen, host, NI_MAXHOST, service, NI_MAXSERV, NI_NUMERICSERV | NI_NUMERICHOST))
+	    	kb_error(LOG_INFO, "fsp_serve attempting to bind to family %d, %s:%s", info->ai_family, host, service);
+
 	    sock[nsock] = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
 	    if (sock[nsock] < 0)
 		continue;
@@ -533,11 +537,13 @@ void fsp_serve (const char *kb_name, fsp_backend *backend, int daemon, float dis
 	    if (bind(sock[nsock], info->ai_addr, info->ai_addrlen) < 0) {
 		err = errno;
 		close(sock[nsock]);
+		kb_error(LOG_INFO, "bind returned %d (%s)", err, strerror(err));
 		continue;
 	    }
 	    if (listen(sock[nsock], 64) < 0) {
 		err = errno;
 		close(sock[nsock]);
+		kb_error(LOG_INFO, "listen returned %d (%s)", err, strerror(err));
 		continue;
 	    }
 	    ++nsock;
